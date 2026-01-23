@@ -4,40 +4,40 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.fabridev.austral.data.DolarRepository
+import com.fabridev.austral.data.local.GoalDao
+import com.fabridev.austral.data.local.GoalEntity
 import com.fabridev.austral.data.local.TransactionDao
 import com.fabridev.austral.data.local.TransactionEntity
 import com.fabridev.austral.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
-class HomeViewModel(private val dao: TransactionDao) : ViewModel() {
+class HomeViewModel(
+    private val transactionDao: TransactionDao,
+    private val goalDao: GoalDao
+) : ViewModel() {
 
-    // 1. Instanciamos el Repositorio (nuestro intermediario con internet)
     private val dolarRepository = DolarRepository(RetrofitClient.api)
-
-    // 2. Creamos un flujo separado para el precio del Dólar (arranca en 1150 por defecto)
     private val _dolarPrice = MutableStateFlow(1150.0)
-
-    // Estado público para la UI
     private val _uiState = MutableStateFlow(HomeUiState(isLoading = true))
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
-        // Apenas arranca la pantalla, salimos a buscar el precio real
         fetchDolarPrice()
+        createDummyGoal()
 
-        // 3. LA MAGIA: Combinamos 3 flujos de datos a la vez
         viewModelScope.launch {
             combine(
-                dao.getAllTransactions(), // Flujo 1: Lista de gastos
-                dao.getTotalBalance(),    // Flujo 2: Balance total
-                _dolarPrice               // Flujo 3: Precio del Dólar
-            ) { transactions, balance, dolarValue ->
-                // Cuando cualquiera de los 3 cambie, se crea un nuevo estado
+                transactionDao.getAllTransactions(),
+                transactionDao.getTotalBalance(),
+                goalDao.getAllGoals(),
+                _dolarPrice
+            ) { transactions, balance, goals, dolarValue ->
                 HomeUiState(
                     transactions = transactions,
                     totalBalance = balance ?: 0.0,
-                    dolarBlue = dolarValue, // Usamos el valor del flujo del dólar
+                    goals = goals,
+                    dolarBlue = dolarValue,
                     isLoading = false
                 )
             }.collect { newState ->
@@ -46,40 +46,73 @@ class HomeViewModel(private val dao: TransactionDao) : ViewModel() {
         }
     }
 
-    // Función para pedir el precio a la API
-    private fun fetchDolarPrice() {
+    private fun createDummyGoal() {
         viewModelScope.launch {
-            // El repositorio se encarga de probar si hay internet
-            val price = dolarRepository.getBluePrice()
-
-            // Si trajo un precio válido (no es null), actualizamos nuestro flujo
-            if (price != null) {
-                _dolarPrice.value = price
+            val goals = goalDao.getAllGoals().first()
+            if (goals.isEmpty()) {
+                goalDao.insertGoal(
+                    GoalEntity(
+                        name = "Auto para Brasil 🇧🇷",
+                        targetAmount = 5000.0,
+                        savedAmount = 2500.0,
+                        currencyCode = "USD"
+                    )
+                )
             }
         }
     }
 
-    // Función para agregar transacciones (igual que antes)
+    private fun fetchDolarPrice() {
+        viewModelScope.launch {
+            val price = dolarRepository.getBluePrice()
+            if (price != null) _dolarPrice.value = price
+        }
+    }
+
     fun addTransaction(amount: Double, description: String, isExpense: Boolean) {
         viewModelScope.launch {
-            dao.insertTransaction(
-                TransactionEntity(
-                    amount = amount,
-                    description = description,
-                    isExpense = isExpense,
-                    currencyCode = "ARS"
+            transactionDao.insertTransaction(
+                TransactionEntity(amount = amount, description = description, isExpense = isExpense, currencyCode = "ARS")
+            )
+        }
+    }
+
+    // --- NUEVAS FUNCIONES PARA METAS ---
+
+    fun addGoal(name: String, target: Double, saved: Double, currency: String) {
+        viewModelScope.launch {
+            goalDao.insertGoal(
+                GoalEntity(
+                    name = name,
+                    targetAmount = target,
+                    savedAmount = saved,
+                    currencyCode = currency
                 )
             )
         }
     }
+
+    fun deleteGoal(goal: GoalEntity) {
+        viewModelScope.launch {
+            goalDao.deleteGoal(goal)
+        }
+    }
+
+    fun updateGoal(goal: GoalEntity) {
+        viewModelScope.launch {
+            goalDao.updateGoal(goal)
+        }
+    }
 }
 
-// La Fábrica queda igual
-class HomeViewModelFactory(private val dao: TransactionDao) : ViewModelProvider.Factory {
+class HomeViewModelFactory(
+    private val transactionDao: TransactionDao,
+    private val goalDao: GoalDao
+) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(dao) as T
+            return HomeViewModel(transactionDao, goalDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

@@ -5,14 +5,15 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// Si agregás más tablas (como 'Goals'), las ponés en entities = [...]
-@Database(entities = [TransactionEntity::class], version = 1, exportSchema = false)
+// 1. AGREGAMOS GoalEntity A LA LISTA DE ENTIDADES
+// 2. SUBIMOS LA VERSIÓN A 2 (Porque cambió la estructura)
+@Database(entities = [TransactionEntity::class, GoalEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
+    abstract fun goalDao(): GoalDao // <--- NUEVO DAO
 
     companion object {
-        // Singleton: Asegura que solo haya una instancia de la BD abierta a la vez
         @Volatile
         private var INSTANCE: AppDatabase? = null
 
@@ -21,8 +22,12 @@ abstract class AppDatabase : RoomDatabase() {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
-                    "austral_database" // El nombre del archivo en el celular
-                ).build()
+                    "austral_database"
+                )
+                    // ESTA LÍNEA ES CLAVE EN DESARROLLO:
+                    // Si cambiamos la BD, borra todo y empieza de cero para no crashear.
+                    .fallbackToDestructiveMigration()
+                    .build()
                 INSTANCE = instance
                 instance
             }

@@ -15,6 +15,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fabridev.austral.data.local.GoalEntity
 import com.fabridev.austral.data.local.TransactionEntity
 import com.fabridev.austral.ui.theme.AustralTheme
 import java.text.SimpleDateFormat
@@ -24,14 +25,17 @@ import java.util.*
 fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToAdd: () -> Unit,
-    onNavigateToHistory: () -> Unit // <--- Recibimos la navegación
+    onNavigateToHistory: () -> Unit,
+    onNavigateToAddGoal: () -> Unit // <--- 1. NUEVO PARÁMETRO: Navegación a crear meta
 ) {
     val state by viewModel.uiState.collectAsState()
 
     HomeContent(
         state = state,
         onAddTransaction = onNavigateToAdd,
-        onViewHistory = onNavigateToHistory // <--- Se la pasamos al contenido
+        onViewHistory = onNavigateToHistory,
+        onDeleteGoal = { goal -> viewModel.deleteGoal(goal) },
+        onAddGoalClick = onNavigateToAddGoal // <--- 2. LO PASAMOS ABAJO
     )
 }
 
@@ -39,7 +43,9 @@ fun HomeScreen(
 fun HomeContent(
     state: HomeUiState,
     onAddTransaction: () -> Unit,
-    onViewHistory: () -> Unit // <--- Nuevo parámetro
+    onViewHistory: () -> Unit,
+    onDeleteGoal: (GoalEntity) -> Unit,
+    onAddGoalClick: () -> Unit // <--- 3. LO RECIBIMOS AQUÍ
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -69,12 +75,20 @@ fun HomeContent(
             // 4. Botones
             ActionButtonsRow(onAddClick = onAddTransaction)
 
-            // 5. Meta
-            GoalCard()
+            // 5. Metas (DINÁMICO CON BOTÓN +)
+            GoalsSection(
+                goals = state.goals,
+                onDeleteGoal = onDeleteGoal,
+                onGoalClick = { goal ->
+                    // Futura edición
+                    println("Click en editar meta: ${goal.name}")
+                },
+                onAddGoalClick = onAddGoalClick // <--- 4. CONEXIÓN FINAL AL COMPONENTE
+            )
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            // 6. CABECERA DE LISTA (Título + Botón Ver Todo)
+            // 6. Cabecera Lista
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -86,7 +100,6 @@ fun HomeContent(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
-                // Botón transparente para ver el historial
                 TextButton(onClick = onViewHistory) {
                     Text("Ver todo", color = MaterialTheme.colorScheme.primary)
                 }
@@ -94,9 +107,8 @@ fun HomeContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // 7. Lista (LIMITADA A 4 ITEMS)
+            // 7. Lista (Limitada a 4)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                // .take(4) hace la magia de mostrar solo los primeros 4
                 items(state.transactions.take(4)) { transaction ->
                     TransactionItem(transaction)
                 }
@@ -138,7 +150,9 @@ fun HomePreview() {
         HomeContent(
             state = HomeUiState(totalBalance = 150000.0),
             onAddTransaction = {},
-            onViewHistory = {} // <--- Fix para el Preview
+            onViewHistory = {},
+            onDeleteGoal = {},
+            onAddGoalClick = {} // <--- Fix para el Preview
         )
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -22,22 +23,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fabridev.austral.data.local.GoalEntity
 import java.util.Locale
 
 // 1. EL HEADER
 @Composable
 fun WalletHeader() {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(bottom = 24.dp),
+        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray)
-            )
+            Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray))
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = "Welcome back,", color = Color.Gray, fontSize = 12.sp)
@@ -50,11 +48,9 @@ fun WalletHeader() {
     }
 }
 
-// 2. NET WORTH CARD (¡MODIFICADA PARA API!)
+// 2. NET WORTH CARD
 @Composable
-fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) { // <--- Aceptamos el precio real
-
-    // Evitamos división por cero si la API falla y devuelve 0
+fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) {
     val safeDolarPrice = if (dolarPrice > 0) dolarPrice else 1150.0
     val totalUSD = totalBalanceARS / safeDolarPrice
 
@@ -72,13 +68,8 @@ fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) { // <--- Aceptamo
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-
-                // Muestra el total convertido
                 Text(text = "$ ${String.format(Locale.US, "%.2f", totalUSD)}", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-
-                // Muestra qué cotización estamos usando
                 Text(text = "USD (Blue: $${safeDolarPrice.toInt()})", color = Color.Gray, fontSize = 14.sp)
-
                 Spacer(modifier = Modifier.weight(1f))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Surface(color = Color(0xFF0984E3).copy(alpha = 0.2f), shape = RoundedCornerShape(6.dp)) {
@@ -96,7 +87,7 @@ fun ActionButtonsRow(onAddClick: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         ActionButton(icon = Icons.Default.QrCodeScanner, label = "Scan", color = Color(0xFF6C5CE7))
         ActionButton(icon = Icons.Default.Add, label = "Add", color = Color(0xFF6C5CE7), isMain = true, onClick = onAddClick)
-        ActionButton(icon = Icons.Default.SwapHoriz, label = "Exchange", color = Color(0xFF6C5CE7))
+        ActionButton(icon = Icons.Default.SwapHoriz, label = "Deudas", color = Color(0xFF6C5CE7))
         ActionButton(icon = Icons.Default.MoreHoriz, label = "More", color = Color.Gray)
     }
 }
@@ -120,26 +111,17 @@ fun ActionButton(icon: ImageVector, label: String, color: Color, isMain: Boolean
 }
 
 // 4. TICKER ROW
-// Modificamos para recibir el precio
 @Composable
 fun TickerRow(dolarBluePrice: Double) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-
-        // AHORA USAMOS EL PRECIO REAL (Formateado sin decimales)
         item {
-            TickerItem(
-                name = "Dólar Blue",
-                price = "$${dolarBluePrice.toInt()}",
-                change = "+0%", // La API gratis no nos da el % de cambio hoy, lo dejamos fijo o lo calculamos despues
-                isPositive = true
-            )
+            TickerItem(name = "Dólar Blue", price = "$${dolarBluePrice.toInt()}", change = "+0%", isPositive = true)
         }
-
-        // Bitcoin y USDT siguen fijos porque necesitaríamos otra API (CoinGecko o Binance) para esos datos
         item { TickerItem("Bitcoin", "$98,200", "-1%", false) }
         item { TickerItem("USDT", "$1,130", "0%", true) }
     }
 }
+
 @Composable
 fun TickerItem(name: String, price: String, change: String, isPositive: Boolean) {
     Card(
@@ -161,31 +143,135 @@ fun TickerItem(name: String, price: String, change: String, isPositive: Boolean)
     }
 }
 
-// 5. GOAL CARD
+// 5. SECCIÓN DE METAS (CON BOTÓN AGREGAR)
 @Composable
-fun GoalCard() {
+fun GoalsSection(
+    goals: List<GoalEntity>,
+    onDeleteGoal: (GoalEntity) -> Unit,
+    onGoalClick: (GoalEntity) -> Unit,
+    onAddGoalClick: () -> Unit // <--- NUEVO EVENTO PARA IR A AGREGAR
+) {
+    Column {
+        // CABECERA CON TÍTULO Y BOTÓN "+"
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Mis Metas 🚀",
+                color = Color.White,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold
+            )
+            // Botoncito "+"
+            IconButton(
+                onClick = onAddGoalClick,
+                modifier = Modifier.size(28.dp).background(Color(0xFF2D3440), CircleShape)
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Nueva Meta", tint = Color.White, modifier = Modifier.size(16.dp))
+            }
+        }
+
+        if (goals.isEmpty()) {
+            // ESTADO VACÍO (EMPTY STATE)
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(100.dp)
+                    .clickable { onAddGoalClick() }, // Clic en toda la tarjeta
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF161B26).copy(alpha = 0.5f)),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)) // Borde punteado simulado
+            ) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = Color.Gray)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Crear mi primera meta", color = Color.Gray)
+                    }
+                }
+            }
+        } else {
+            // Lógica de Ancho Dinámico
+            if (goals.size == 1) {
+                GoalItem(
+                    goal = goals[0],
+                    onDelete = { onDeleteGoal(goals[0]) },
+                    onClick = { onGoalClick(goals[0]) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            } else {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    items(goals) { goal ->
+                        GoalItem(
+                            goal = goal,
+                            onDelete = { onDeleteGoal(goal) },
+                            onClick = { onGoalClick(goal) },
+                            modifier = Modifier.width(280.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GoalItem(
+    goal: GoalEntity,
+    onDelete: () -> Unit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Calculamos porcentaje
+    val progress = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount).toFloat() else 0f
+    val percentage = (progress * 100).toInt()
+
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier
+            .height(160.dp)
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF161B26)),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(text = "Auto para Brasil 🇧🇷", color = Color.White, fontWeight = FontWeight.Bold)
-                    Text(text = "Meta: Enero 2027", color = Color.Gray, fontSize = 10.sp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = goal.name, color = Color.White, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text(text = "Meta: ${goal.currencyCode}", color = Color.Gray, fontSize = 10.sp)
                 }
-                Text(text = "50%", color = Color(0xFF6C5CE7), fontWeight = FontWeight.Bold)
+                IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = "Borrar", tint = Color(0xFFFF7675), modifier = Modifier.size(16.dp))
+                }
             }
+
             Spacer(modifier = Modifier.height(12.dp))
-            Box(modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Color(0xFF2D3440))) {
-                Box(modifier = Modifier.fillMaxWidth(0.5f).fillMaxHeight().background(Brush.horizontalGradient(listOf(Color(0xFF6C5CE7), Color(0xFFA29BFE)))))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(text = "$percentage%", color = Color(0xFF6C5CE7), fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                Spacer(modifier = Modifier.width(8.dp))
+                Box(
+                    modifier = Modifier.weight(1f).height(6.dp).clip(RoundedCornerShape(3.dp)).background(Color(0xFF2D3440))
+                ) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(progress.coerceIn(0f, 1f)).fillMaxHeight().background(Brush.horizontalGradient(listOf(Color(0xFF6C5CE7), Color(0xFFA29BFE))))
+                    )
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
+
+            Spacer(modifier = Modifier.weight(1f))
+
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(text = "$2,500", color = Color.White, fontSize = 12.sp)
-                Text(text = "$5,000", color = Color.Gray, fontSize = 12.sp)
+                Text(text = "$ ${goal.savedAmount.toInt()}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(text = "/ ${goal.targetAmount.toInt()}", color = Color.Gray, fontSize = 12.sp)
             }
         }
     }
