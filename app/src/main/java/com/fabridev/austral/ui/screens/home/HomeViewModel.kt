@@ -4,17 +4,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.fabridev.austral.data.DolarRepository
-import com.fabridev.austral.data.local.GoalDao
-import com.fabridev.austral.data.local.GoalEntity
-import com.fabridev.austral.data.local.TransactionDao
-import com.fabridev.austral.data.local.TransactionEntity
+import com.fabridev.austral.data.local.* // Importa todos los DAOs y Entities
 import com.fabridev.austral.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 class HomeViewModel(
     private val transactionDao: TransactionDao,
-    private val goalDao: GoalDao
+    private val goalDao: GoalDao,
+    private val debtDao: DebtDao // <--- 1. NUEVO DAO INYECTADO
 ) : ViewModel() {
 
     private val dolarRepository = DolarRepository(RetrofitClient.api)
@@ -27,16 +25,19 @@ class HomeViewModel(
         createDummyGoal()
 
         viewModelScope.launch {
+            // 2. AGREGAMOS LAS DEUDAS AL COMBINE
             combine(
                 transactionDao.getAllTransactions(),
                 transactionDao.getTotalBalance(),
                 goalDao.getAllGoals(),
+                debtDao.getAllDebts(), // <--- Escuchamos las deudas
                 _dolarPrice
-            ) { transactions, balance, goals, dolarValue ->
+            ) { transactions, balance, goals, debts, dolarValue ->
                 HomeUiState(
                     transactions = transactions,
                     totalBalance = balance ?: 0.0,
                     goals = goals,
+                    debts = debts, // <--- Las guardamos en el estado
                     dolarBlue = dolarValue,
                     isLoading = false
                 )
@@ -77,42 +78,58 @@ class HomeViewModel(
         }
     }
 
-    // --- NUEVAS FUNCIONES PARA METAS ---
-
+    // --- FUNCIONES PARA METAS ---
     fun addGoal(name: String, target: Double, saved: Double, currency: String) {
         viewModelScope.launch {
             goalDao.insertGoal(
-                GoalEntity(
-                    name = name,
-                    targetAmount = target,
-                    savedAmount = saved,
-                    currencyCode = currency
-                )
+                GoalEntity(name = name, targetAmount = target, savedAmount = saved, currencyCode = currency)
             )
         }
     }
 
     fun deleteGoal(goal: GoalEntity) {
-        viewModelScope.launch {
-            goalDao.deleteGoal(goal)
-        }
+        viewModelScope.launch { goalDao.deleteGoal(goal) }
     }
 
     fun updateGoal(goal: GoalEntity) {
+        viewModelScope.launch { goalDao.updateGoal(goal) }
+    }
+
+    fun addFundsToGoal(goal: GoalEntity, amountToAdd: Double) {
+        val updatedGoal = goal.copy(savedAmount = goal.savedAmount + amountToAdd)
+        viewModelScope.launch { goalDao.updateGoal(updatedGoal) }
+    }
+
+    // --- 3. NUEVAS FUNCIONES PARA DEUDAS ---
+    fun addDebt(name: String, amount: Double) {
         viewModelScope.launch {
-            goalDao.updateGoal(goal)
+            debtDao.insertDebt(
+                DebtEntity(name = name, totalAmount = amount, remainingAmount = amount)
+            )
+        }
+    }
+
+    fun payDebt(debt: DebtEntity, amountToPay: Double) {
+        // Calculamos cuánto falta (no dejamos que baje de 0)
+        val newRemaining = (debt.remainingAmount - amountToPay).coerceAtLeast(0.0)
+        val updatedDebt = debt.copy(remainingAmount = newRemaining)
+
+        viewModelScope.launch {
+            debtDao.updateDebt(updatedDebt)
         }
     }
 }
 
+// 4. FACTORY ACTUALIZADA PARA RECIBIR 3 DAOS
 class HomeViewModelFactory(
     private val transactionDao: TransactionDao,
-    private val goalDao: GoalDao
+    private val goalDao: GoalDao,
+    private val debtDao: DebtDao // <--- NUEVO
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(HomeViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return HomeViewModel(transactionDao, goalDao) as T
+            return HomeViewModel(transactionDao, goalDao, debtDao) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

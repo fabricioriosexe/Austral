@@ -26,7 +26,9 @@ fun HomeScreen(
     viewModel: HomeViewModel,
     onNavigateToAdd: () -> Unit,
     onNavigateToHistory: () -> Unit,
-    onNavigateToAddGoal: () -> Unit // <--- 1. NUEVO PARÁMETRO: Navegación a crear meta
+    onNavigateToAddGoal: () -> Unit,
+    onNavigateToGoalDetail: (Int) -> Unit,
+    onNavigateToDebts: () -> Unit // <--- 1. NUEVO PARÁMETRO
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -35,7 +37,9 @@ fun HomeScreen(
         onAddTransaction = onNavigateToAdd,
         onViewHistory = onNavigateToHistory,
         onDeleteGoal = { goal -> viewModel.deleteGoal(goal) },
-        onAddGoalClick = onNavigateToAddGoal // <--- 2. LO PASAMOS ABAJO
+        onAddGoalClick = onNavigateToAddGoal,
+        onGoalClick = { goalId -> onNavigateToGoalDetail(goalId) },
+        onDebtsClick = onNavigateToDebts // <--- 2. CONECTAMOS
     )
 }
 
@@ -45,7 +49,9 @@ fun HomeContent(
     onAddTransaction: () -> Unit,
     onViewHistory: () -> Unit,
     onDeleteGoal: (GoalEntity) -> Unit,
-    onAddGoalClick: () -> Unit // <--- 3. LO RECIBIMOS AQUÍ
+    onAddGoalClick: () -> Unit,
+    onGoalClick: (Int) -> Unit,
+    onDebtsClick: () -> Unit // <--- 3. RECIBIMOS
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -73,17 +79,17 @@ fun HomeContent(
             TickerRow(dolarBluePrice = state.dolarBlue)
 
             // 4. Botones
-            ActionButtonsRow(onAddClick = onAddTransaction)
+            ActionButtonsRow(
+                onAddClick = onAddTransaction,
+                onDebtsClick = onDebtsClick // <--- 4. FINALMENTE LO USAMOS
+            )
 
-            // 5. Metas (DINÁMICO CON BOTÓN +)
+            // 5. Metas
             GoalsSection(
                 goals = state.goals,
                 onDeleteGoal = onDeleteGoal,
-                onGoalClick = { goal ->
-                    // Futura edición
-                    println("Click en editar meta: ${goal.name}")
-                },
-                onAddGoalClick = onAddGoalClick // <--- 4. CONEXIÓN FINAL AL COMPONENTE
+                onGoalClick = { goal -> onGoalClick(goal.id) },
+                onAddGoalClick = onAddGoalClick
             )
 
             Spacer(modifier = Modifier.height(24.dp))
@@ -152,7 +158,9 @@ fun HomePreview() {
             onAddTransaction = {},
             onViewHistory = {},
             onDeleteGoal = {},
-            onAddGoalClick = {} // <--- Fix para el Preview
+            onAddGoalClick = {},
+            onGoalClick = {},
+            onDebtsClick = {} // <--- Fix para el Preview
         )
     }
 }

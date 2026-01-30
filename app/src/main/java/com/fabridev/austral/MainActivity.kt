@@ -17,12 +17,13 @@ class MainActivity : ComponentActivity() {
         // 1. Obtenemos la base de datos
         val database = AppDatabase.getDatabase(this)
 
-        // 2. Sacamos los DOS DAOs necesarios
+        // 2. Sacamos los TRES DAOs necesarios
         val transactionDao = database.transactionDao()
-        val goalDao = database.goalDao() // <--- NUEVO
+        val goalDao = database.goalDao()
+        val debtDao = database.debtDao() // <--- NUEVO: Obtenemos el DAO de deudas
 
-        // 3. Se los pasamos a la Fábrica (el orden importa según como lo definiste en la Factory)
-        val viewModelFactory = HomeViewModelFactory(transactionDao, goalDao)
+        // 3. Se los pasamos a la Fábrica (AGREGAMOS debtDao AL FINAL)
+        val viewModelFactory = HomeViewModelFactory(transactionDao, goalDao, debtDao)
 
         // 4. Creamos el ViewModel
         val viewModel = ViewModelProvider(this, viewModelFactory)[HomeViewModel::class.java]

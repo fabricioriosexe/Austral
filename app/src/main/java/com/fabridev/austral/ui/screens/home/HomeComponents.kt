@@ -81,13 +81,28 @@ fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) {
     }
 }
 
-// 3. ACTION BUTTONS
+// 3. ACTION BUTTONS (MODIFICADO PARA DEUDAS)
 @Composable
-fun ActionButtonsRow(onAddClick: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+fun ActionButtonsRow(
+    onAddClick: () -> Unit,
+    onDebtsClick: () -> Unit // <--- NUEVO PARÁMETRO
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
         ActionButton(icon = Icons.Default.QrCodeScanner, label = "Scan", color = Color(0xFF6C5CE7))
+
         ActionButton(icon = Icons.Default.Add, label = "Add", color = Color(0xFF6C5CE7), isMain = true, onClick = onAddClick)
-        ActionButton(icon = Icons.Default.SwapHoriz, label = "Deudas", color = Color(0xFF6C5CE7))
+
+        // --- BOTÓN DEUDAS ---
+        ActionButton(
+            icon = Icons.Default.CreditCard, // Cambiamos ícono
+            label = "Deudas",
+            color = Color(0xFF6C5CE7),
+            onClick = onDebtsClick // <--- Conectamos el click
+        )
+
         ActionButton(icon = Icons.Default.MoreHoriz, label = "More", color = Color.Gray)
     }
 }
@@ -143,30 +158,21 @@ fun TickerItem(name: String, price: String, change: String, isPositive: Boolean)
     }
 }
 
-// 5. SECCIÓN DE METAS (CON BOTÓN AGREGAR)
+// 5. SECCIÓN DE METAS
 @Composable
 fun GoalsSection(
     goals: List<GoalEntity>,
     onDeleteGoal: (GoalEntity) -> Unit,
     onGoalClick: (GoalEntity) -> Unit,
-    onAddGoalClick: () -> Unit // <--- NUEVO EVENTO PARA IR A AGREGAR
+    onAddGoalClick: () -> Unit
 ) {
     Column {
-        // CABECERA CON TÍTULO Y BOTÓN "+"
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "Mis Metas 🚀",
-                color = Color.White,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold
-            )
-            // Botoncito "+"
+            Text(text = "Mis Metas 🚀", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             IconButton(
                 onClick = onAddGoalClick,
                 modifier = Modifier.size(28.dp).background(Color(0xFF2D3440), CircleShape)
@@ -176,15 +182,11 @@ fun GoalsSection(
         }
 
         if (goals.isEmpty()) {
-            // ESTADO VACÍO (EMPTY STATE)
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(100.dp)
-                    .clickable { onAddGoalClick() }, // Clic en toda la tarjeta
+                modifier = Modifier.fillMaxWidth().height(100.dp).clickable { onAddGoalClick() },
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF161B26).copy(alpha = 0.5f)),
                 shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f)) // Borde punteado simulado
+                border = BorderStroke(1.dp, Color.Gray.copy(alpha = 0.3f))
             ) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -195,7 +197,6 @@ fun GoalsSection(
                 }
             }
         } else {
-            // Lógica de Ancho Dinámico
             if (goals.size == 1) {
                 GoalItem(
                     goal = goals[0],
@@ -226,14 +227,11 @@ fun GoalItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Calculamos porcentaje
     val progress = if (goal.targetAmount > 0) (goal.savedAmount / goal.targetAmount).toFloat() else 0f
     val percentage = (progress * 100).toInt()
 
     Card(
-        modifier = modifier
-            .height(160.dp)
-            .clickable { onClick() },
+        modifier = modifier.height(160.dp).clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = Color(0xFF161B26)),
         shape = RoundedCornerShape(16.dp),
         border = BorderStroke(1.dp, Color.White.copy(alpha = 0.05f))

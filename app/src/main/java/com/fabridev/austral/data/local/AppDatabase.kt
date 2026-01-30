@@ -5,13 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-// 1. AGREGAMOS GoalEntity A LA LISTA DE ENTIDADES
-// 2. SUBIMOS LA VERSIÓN A 2 (Porque cambió la estructura)
-@Database(entities = [TransactionEntity::class, GoalEntity::class], version = 2, exportSchema = false)
+// 1. AGREGAMOS DebtEntity Y SUBIMOS VERSIÓN A 3
+@Database(entities = [TransactionEntity::class, GoalEntity::class, DebtEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
 
     abstract fun transactionDao(): TransactionDao
-    abstract fun goalDao(): GoalDao // <--- NUEVO DAO
+    abstract fun goalDao(): GoalDao
+    abstract fun debtDao(): DebtDao // <--- NUEVO DAO
 
     companion object {
         @Volatile
@@ -24,9 +24,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "austral_database"
                 )
-                    // ESTA LÍNEA ES CLAVE EN DESARROLLO:
-                    // Si cambiamos la BD, borra todo y empieza de cero para no crashear.
-                    .fallbackToDestructiveMigration()
+                    .fallbackToDestructiveMigration() // Borrará datos viejos al migrar
                     .build()
                 INSTANCE = instance
                 instance
