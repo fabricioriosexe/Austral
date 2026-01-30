@@ -70,10 +70,17 @@ class HomeViewModel(
         }
     }
 
-    fun addTransaction(amount: Double, description: String, isExpense: Boolean) {
+
+    fun addTransaction(amount: Double, description: String, isExpense: Boolean, category: String) {
         viewModelScope.launch {
             transactionDao.insertTransaction(
-                TransactionEntity(amount = amount, description = description, isExpense = isExpense, currencyCode = "ARS")
+                TransactionEntity(
+                    amount = amount,
+                    description = description,
+                    isExpense = isExpense,
+                    currencyCode = "ARS",
+                    category = category // <--- GUARDAMOS LA CATEGORÍA
+                )
             )
         }
     }

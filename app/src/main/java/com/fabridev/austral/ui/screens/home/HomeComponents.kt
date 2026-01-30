@@ -24,6 +24,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fabridev.austral.data.local.GoalEntity
+import com.fabridev.austral.data.local.TransactionEntity // <--- IMPORTANTE: Faltaba este import
+import com.fabridev.austral.ui.utils.getCategoryById // <--- IMPORTANTE: Faltaba este import para los íconos
 import java.util.Locale
 
 // 1. EL HEADER
@@ -81,11 +83,11 @@ fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) {
     }
 }
 
-// 3. ACTION BUTTONS (MODIFICADO PARA DEUDAS)
+// 3. ACTION BUTTONS
 @Composable
 fun ActionButtonsRow(
     onAddClick: () -> Unit,
-    onDebtsClick: () -> Unit // <--- NUEVO PARÁMETRO
+    onDebtsClick: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp),
@@ -95,12 +97,12 @@ fun ActionButtonsRow(
 
         ActionButton(icon = Icons.Default.Add, label = "Add", color = Color(0xFF6C5CE7), isMain = true, onClick = onAddClick)
 
-        // --- BOTÓN DEUDAS ---
+        // Botón Deudas
         ActionButton(
-            icon = Icons.Default.CreditCard, // Cambiamos ícono
+            icon = Icons.Default.CreditCard,
             label = "Deudas",
             color = Color(0xFF6C5CE7),
-            onClick = onDebtsClick // <--- Conectamos el click
+            onClick = onDebtsClick
         )
 
         ActionButton(icon = Icons.Default.MoreHoriz, label = "More", color = Color.Gray)
@@ -271,6 +273,61 @@ fun GoalItem(
                 Text(text = "$ ${goal.savedAmount.toInt()}", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(text = "/ ${goal.targetAmount.toInt()}", color = Color.Gray, fontSize = 12.sp)
             }
+        }
+    }
+}
+
+// 6. ITEM DE TRANSACCIÓN (ESTE ES EL QUE TE FALTABA)
+@Composable
+fun TransactionItem(transaction: TransactionEntity) {
+    // Recuperamos los datos de la categoría (Color e Ícono)
+    val categoryData = getCategoryById(transaction.category)
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // ICONO DE LA CATEGORÍA
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .background(categoryData.color.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        categoryData.icon,
+                        contentDescription = null,
+                        tint = categoryData.color,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
+                    // Si no hay descripción, mostramos el nombre de la categoría
+                    val mainText = if (transaction.description.isNotEmpty()) transaction.description else categoryData.name
+                    Text(text = mainText, color = Color.White, fontWeight = FontWeight.Medium)
+
+                    val date = java.text.SimpleDateFormat("dd/MM", Locale.getDefault()).format(java.util.Date(transaction.date))
+                    Text(text = "$date • ${categoryData.name}", color = Color.Gray, fontSize = 12.sp)
+                }
+            }
+
+            // Monto
+            Text(
+                text = (if (transaction.isExpense) "- $" else "+ $") + transaction.amount.toInt(),
+                color = if (transaction.isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

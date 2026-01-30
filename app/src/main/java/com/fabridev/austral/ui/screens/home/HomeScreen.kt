@@ -3,7 +3,6 @@ package com.fabridev.austral.ui.screens.home
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -16,10 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fabridev.austral.data.local.GoalEntity
-import com.fabridev.austral.data.local.TransactionEntity
 import com.fabridev.austral.ui.theme.AustralTheme
-import java.text.SimpleDateFormat
-import java.util.*
 
 @Composable
 fun HomeScreen(
@@ -28,7 +24,7 @@ fun HomeScreen(
     onNavigateToHistory: () -> Unit,
     onNavigateToAddGoal: () -> Unit,
     onNavigateToGoalDetail: (Int) -> Unit,
-    onNavigateToDebts: () -> Unit // <--- 1. NUEVO PARÁMETRO
+    onNavigateToDebts: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -39,7 +35,7 @@ fun HomeScreen(
         onDeleteGoal = { goal -> viewModel.deleteGoal(goal) },
         onAddGoalClick = onNavigateToAddGoal,
         onGoalClick = { goalId -> onNavigateToGoalDetail(goalId) },
-        onDebtsClick = onNavigateToDebts // <--- 2. CONECTAMOS
+        onDebtsClick = onNavigateToDebts
     )
 }
 
@@ -51,7 +47,7 @@ fun HomeContent(
     onDeleteGoal: (GoalEntity) -> Unit,
     onAddGoalClick: () -> Unit,
     onGoalClick: (Int) -> Unit,
-    onDebtsClick: () -> Unit // <--- 3. RECIBIMOS
+    onDebtsClick: () -> Unit
 ) {
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
@@ -81,7 +77,7 @@ fun HomeContent(
             // 4. Botones
             ActionButtonsRow(
                 onAddClick = onAddTransaction,
-                onDebtsClick = onDebtsClick // <--- 4. FINALMENTE LO USAMOS
+                onDebtsClick = onDebtsClick
             )
 
             // 5. Metas
@@ -116,6 +112,7 @@ fun HomeContent(
             // 7. Lista (Limitada a 4)
             LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(state.transactions.take(4)) { transaction ->
+                    // ACÁ USA AUTOMÁTICAMENTE EL COMPONENTE NUEVO QUE ESTÁ EN HomeComponents.kt
                     TransactionItem(transaction)
                 }
             }
@@ -123,31 +120,7 @@ fun HomeContent(
     }
 }
 
-@Composable
-fun TransactionItem(transaction: TransactionEntity) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp).fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column {
-                Text(text = transaction.description, color = Color.White, fontWeight = FontWeight.Medium)
-                val date = SimpleDateFormat("dd/MM", Locale.getDefault()).format(Date(transaction.date))
-                Text(text = date, color = Color.Gray, fontSize = 12.sp)
-            }
-            Text(
-                text = (if (transaction.isExpense) "- $" else "+ $") + transaction.amount,
-                color = if (transaction.isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
+// ⚠️ NOTA: Borré el TransactionItem viejo de acá para que use el nuevo con íconos
 
 @Preview
 @Composable
@@ -160,7 +133,7 @@ fun HomePreview() {
             onDeleteGoal = {},
             onAddGoalClick = {},
             onGoalClick = {},
-            onDebtsClick = {} // <--- Fix para el Preview
+            onDebtsClick = {}
         )
     }
 }
