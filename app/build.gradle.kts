@@ -80,4 +80,7 @@ dependencies {
 
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
+
+    // Biometría
+    implementation("androidx.biometric:biometric:1.1.0")
 }
