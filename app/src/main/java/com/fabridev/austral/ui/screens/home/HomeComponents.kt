@@ -24,37 +24,66 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fabridev.austral.data.local.GoalEntity
-import com.fabridev.austral.data.local.TransactionEntity // <--- IMPORTANTE: Faltaba este import
-import com.fabridev.austral.ui.utils.getCategoryById // <--- IMPORTANTE: Faltaba este import para los íconos
+import com.fabridev.austral.data.local.TransactionEntity
+import com.fabridev.austral.ui.utils.getCategoryById
 import java.util.Locale
 
 // 1. EL HEADER
 @Composable
-fun WalletHeader() {
+fun WalletHeader(
+    userName: String,
+    onEditClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.clickable { onEditClick() }
+        ) {
             Box(modifier = Modifier.size(48.dp).clip(CircleShape).background(Color.Gray))
             Spacer(modifier = Modifier.width(12.dp))
             Column {
                 Text(text = "Welcome back,", color = Color.Gray, fontSize = 12.sp)
-                Text(text = "CFO Fabricio", color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = userName, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
             }
         }
-        IconButton(onClick = { /* TODO */ }) {
+        IconButton(onClick = { /* Notificaciones */ }) {
             Icon(Icons.Outlined.Notifications, contentDescription = null, tint = Color.White)
         }
     }
 }
 
-// 2. NET WORTH CARD
+// 2. NET WORTH CARD (ACTUALIZADA CON LÓGICA DE MONEDA)
 @Composable
-fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) {
-    val safeDolarPrice = if (dolarPrice > 0) dolarPrice else 1150.0
-    val totalUSD = totalBalanceARS / safeDolarPrice
+fun NetWorthCard(
+    totalBalanceARS: Double,
+    dolarPrice: Double,
+    currencyCode: String // <--- Recibe ARS, USD o BRL
+) {
+    // Calculamos el balance a mostrar según la moneda elegida
+    val displayBalance = when(currencyCode) {
+        "USD" -> totalBalanceARS / (if (dolarPrice > 0) dolarPrice else 1150.0)
+        "BRL" -> totalBalanceARS / 200.0 // Estimado fijo para MVP (1 Real = 200 Pesos)
+        else -> totalBalanceARS // Por defecto ARS
+    }
+
+    // Elegimos el símbolo
+    val symbol = when(currencyCode) {
+        "USD" -> "US$"
+        "BRL" -> "R$"
+        else -> "$"
+    }
+
+    // También mostramos cuánto sería en dólares abajo si no estamos en USD
+    val secondaryInfo = if (currencyCode == "USD") {
+        "ARS (Blue: $${dolarPrice.toInt()})"
+    } else {
+        val totalUSD = totalBalanceARS / (if (dolarPrice > 0) dolarPrice else 1150.0)
+        "Equivale a US$ ${totalUSD.toInt()}"
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth().height(200.dp),
@@ -70,12 +99,21 @@ fun NetWorthCard(totalBalanceARS: Double, dolarPrice: Double) {
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
-                Text(text = "$ ${String.format(Locale.US, "%.2f", totalUSD)}", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
-                Text(text = "USD (Blue: $${safeDolarPrice.toInt()})", color = Color.Gray, fontSize = 14.sp)
+
+                // NÚMERO GRANDE (CONVERTIDO)
+                Text(text = "$symbol ${String.format(Locale.US, "%.2f", displayBalance)}", color = Color.White, fontSize = 36.sp, fontWeight = FontWeight.Bold)
+
+                // INFORMACIÓN SECUNDARIA
+                Text(text = secondaryInfo, color = Color.Gray, fontSize = 14.sp)
+
                 Spacer(modifier = Modifier.weight(1f))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(color = Color(0xFF0984E3).copy(alpha = 0.2f), shape = RoundedCornerShape(6.dp)) {
-                        Text(text = "🇦🇷 $totalBalanceARS ARS", color = Color(0xFF74B9FF), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+
+                // CHIP CON EL MONTO ORIGINAL EN ARS (Si no estamos en ARS)
+                if (currencyCode != "ARS") {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Surface(color = Color(0xFF0984E3).copy(alpha = 0.2f), shape = RoundedCornerShape(6.dp)) {
+                            Text(text = "🇦🇷 $totalBalanceARS ARS", color = Color(0xFF74B9FF), fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp))
+                        }
                     }
                 }
             }
@@ -94,17 +132,8 @@ fun ActionButtonsRow(
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         ActionButton(icon = Icons.Default.QrCodeScanner, label = "Scan", color = Color(0xFF6C5CE7))
-
         ActionButton(icon = Icons.Default.Add, label = "Add", color = Color(0xFF6C5CE7), isMain = true, onClick = onAddClick)
-
-        // Botón Deudas
-        ActionButton(
-            icon = Icons.Default.CreditCard,
-            label = "Deudas",
-            color = Color(0xFF6C5CE7),
-            onClick = onDebtsClick
-        )
-
+        ActionButton(icon = Icons.Default.CreditCard, label = "Deudas", color = Color(0xFF6C5CE7), onClick = onDebtsClick)
         ActionButton(icon = Icons.Default.MoreHoriz, label = "More", color = Color.Gray)
     }
 }
@@ -131,9 +160,7 @@ fun ActionButton(icon: ImageVector, label: String, color: Color, isMain: Boolean
 @Composable
 fun TickerRow(dolarBluePrice: Double) {
     LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 16.dp)) {
-        item {
-            TickerItem(name = "Dólar Blue", price = "$${dolarBluePrice.toInt()}", change = "+0%", isPositive = true)
-        }
+        item { TickerItem(name = "Dólar Blue", price = "$${dolarBluePrice.toInt()}", change = "+0%", isPositive = true) }
         item { TickerItem("Bitcoin", "$98,200", "-1%", false) }
         item { TickerItem("USDT", "$1,130", "0%", true) }
     }
@@ -277,10 +304,9 @@ fun GoalItem(
     }
 }
 
-// 6. ITEM DE TRANSACCIÓN (ESTE ES EL QUE TE FALTABA)
+// 6. ITEM DE TRANSACCIÓN
 @Composable
 fun TransactionItem(transaction: TransactionEntity) {
-    // Recuperamos los datos de la categoría (Color e Ícono)
     val categoryData = getCategoryById(transaction.category)
 
     Card(
@@ -294,7 +320,6 @@ fun TransactionItem(transaction: TransactionEntity) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // ICONO DE LA CATEGORÍA
                 Box(
                     modifier = Modifier
                         .size(40.dp)
@@ -313,7 +338,6 @@ fun TransactionItem(transaction: TransactionEntity) {
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column {
-                    // Si no hay descripción, mostramos el nombre de la categoría
                     val mainText = if (transaction.description.isNotEmpty()) transaction.description else categoryData.name
                     Text(text = mainText, color = Color.White, fontWeight = FontWeight.Medium)
 
@@ -322,7 +346,6 @@ fun TransactionItem(transaction: TransactionEntity) {
                 }
             }
 
-            // Monto
             Text(
                 text = (if (transaction.isExpense) "- $" else "+ $") + transaction.amount.toInt(),
                 color = if (transaction.isExpense) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.secondary,
