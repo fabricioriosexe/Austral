@@ -1,12 +1,16 @@
 package com.fabridev.austral.ui.screens.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -15,8 +19,8 @@ import androidx.compose.ui.unit.sp
 import com.fabridev.austral.data.local.GoalEntity
 import com.fabridev.austral.ui.theme.AustralTheme
 
-// Asumo que los componentes (WalletHeader, NetWorthCard, etc.)
-// están en el mismo paquete y se importan automáticamente.
+// Asumimos que WalletHeader, NetWorthCard, TickerRow, etc.
+// están en tu archivo 'HomeComponents.kt' y se importan solos.
 
 @Composable
 fun HomeScreen(
@@ -43,23 +47,45 @@ fun HomeScreen(
         onEditProfileClick = { showNameDialog = true }
     )
 
-    // --- DIÁLOGO PARA EDITAR NOMBRE ---
+    // --- DIÁLOGO DE EDICIÓN (NOMBRE + MONEDA) ---
     if (showNameDialog) {
         var tempName by remember { mutableStateOf("") }
+        // Inicializamos la moneda con la que tiene el usuario actualmente
+        var selectedCurrency by remember { mutableStateOf(state.userCurrency) }
 
         AlertDialog(
             onDismissRequest = { showNameDialog = false },
-            title = { Text("Editar Perfil") },
+            title = { Text("Editar Perfil", fontWeight = FontWeight.Bold) },
             text = {
                 Column {
-                    Text("¿Cómo te gustaría que te llamemos?")
+                    // 1. CAMBIAR NOMBRE
+                    Text("Tu Nombre:", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(
                         value = tempName,
                         onValueChange = { tempName = it },
                         placeholder = { Text(state.userName) },
-                        singleLine = true
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFF6C5CE7),
+                            unfocusedBorderColor = Color.Gray
+                        )
                     )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 2. SELECTOR DE MONEDA
+                    Text("Moneda Principal:", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        CurrencyOption("ARS", selectedCurrency) { selectedCurrency = "ARS" }
+                        CurrencyOption("USD", selectedCurrency) { selectedCurrency = "USD" }
+                        CurrencyOption("BRL", selectedCurrency) { selectedCurrency = "BRL" }
+                    }
                 }
             },
             confirmButton = {
@@ -67,14 +93,22 @@ fun HomeScreen(
                     onClick = {
                         if (tempName.isNotEmpty()) {
                             viewModel.updateUserName(tempName)
-                            showNameDialog = false
                         }
-                    }
+                        // Guardamos la moneda seleccionada
+                        viewModel.updateUserCurrency(selectedCurrency)
+                        showNameDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5CE7))
                 ) { Text("Guardar") }
             },
             dismissButton = {
-                TextButton(onClick = { showNameDialog = false }) { Text("Cancelar") }
-            }
+                TextButton(onClick = { showNameDialog = false }) {
+                    Text("Cancelar", color = Color.Gray)
+                }
+            },
+            containerColor = Color(0xFF2D3440),
+            titleContentColor = Color.White,
+            textContentColor = Color.White
         )
     }
 }
@@ -93,16 +127,14 @@ fun HomeContent(
     Scaffold(
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
-        // CAMBIO CLAVE: Usamos LazyColumn como contenedor principal
-        // Esto permite que TODA la pantalla haga scroll junto.
+        // USAMOS LAZYCOLUMN COMO CONTENEDOR PRINCIPAL
         LazyColumn(
             modifier = Modifier
                 .padding(padding)
                 .fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp) // Espacio entre elementos
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-
             // 1. Header
             item {
                 WalletHeader(
@@ -113,7 +145,6 @@ fun HomeContent(
 
             // 2. Balance
             item {
-                // Nota: Agregué currencyCode porque tu componente lo pide en el otro archivo
                 NetWorthCard(
                     totalBalanceARS = state.totalBalance,
                     dolarPrice = state.dolarBlue,
@@ -144,7 +175,7 @@ fun HomeContent(
                 )
             }
 
-            // 6. Cabecera Lista (Título)
+            // 6. Título Lista
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
@@ -164,8 +195,7 @@ fun HomeContent(
             }
 
             // 7. Lista Dinámica
-            // Aquí usamos 'items' directamente en la LazyColumn principal
-            val recentTransactions = state.transactions.take(4)
+            val recentTransactions = state.transactions.take(10) // Muestra hasta 10 si hay espacio
 
             if (recentTransactions.isEmpty()) {
                 item {
@@ -178,14 +208,32 @@ fun HomeContent(
             } else {
                 items(recentTransactions) { transaction ->
                     TransactionItem(transaction)
-                    // Pequeño espacio extra entre items de la lista si lo deseas
                     Spacer(modifier = Modifier.height(8.dp))
                 }
             }
 
-            // Espacio al final para que no se corte con la navegación del celular
-            item { Spacer(modifier = Modifier.height(40.dp)) }
+            // Espacio final
+            item { Spacer(modifier = Modifier.height(50.dp)) }
         }
+    }
+}
+
+// Helper pequeño para el diálogo (lo dejo aquí para no romper el import)
+@Composable
+private fun CurrencyOption(currency: String, selected: String, onSelect: () -> Unit) {
+    val isSelected = currency == selected
+    val bgColor = if (isSelected) Color(0xFF00B894) else Color(0xFF161B26)
+    val txtColor = if (isSelected) Color.White else Color.Gray
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bgColor)
+            .clickable { onSelect() }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(text = currency, color = txtColor, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -194,7 +242,6 @@ fun HomeContent(
 fun HomePreview() {
     AustralTheme {
         HomeContent(
-            // Agregué userCurrency al mock para que compile
             state = HomeUiState(totalBalance = 150000.0, userName = "CFO Fabricio", userCurrency = "ARS"),
             onAddTransaction = {},
             onViewHistory = {},

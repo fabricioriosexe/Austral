@@ -80,7 +80,7 @@ dependencies {
 
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
-
+    implementation("androidx.core:core-splashscreen:1.0.1")
     // Biometría
     implementation("androidx.biometric:biometric:1.1.0")
     //datastore
