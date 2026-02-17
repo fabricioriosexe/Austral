@@ -1,6 +1,6 @@
 <div align="center">
   <img src="captura%20de%20la%20app/logo.png" alt="Logo Austral" width="140">
-  <h1>🇦🇷 Austral- Argie-Proof Wallet</h1>
+  <h1>🇦🇷 Austral</h1>
 
   <p>
     <strong>Tu escudo financiero contra la inflación.</strong>
